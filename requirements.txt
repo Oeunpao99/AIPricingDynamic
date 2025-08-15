@@ -1,10 +1,7 @@
 streamlit
 pandas
-plotly
 joblib
-transformers
-accelerate
-bitsandbytes
-sentencepiece
-torch
-llm_adviser
+plotly
+streamlit-chat
+scikit-learn
+

@@ -1,7 +1,7 @@
-streamlit
+fastapi
+uvicorn
 pandas
-joblib
-plotly
-streamlit-chat
 scikit-learn
-
+joblib
+torch==2.2.0
+plotly

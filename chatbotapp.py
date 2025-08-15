@@ -4,53 +4,75 @@ import streamlit as st
 import pandas as pd
 import joblib
 import plotly.express as px
-from streamlit_chat import message  # For better chat UI
+from streamlit_chat import message
 
+# --- Path Handling ---
+def get_file_path(filename):
+    """
+    Get the absolute path to a file in the same directory as this script.
+    Works for both development and bundled/PyInstaller environments.
+    """
+    if getattr(sys, 'frozen', False):
+        # The application is frozen (bundled)
+        application_path = os.path.dirname(sys.executable)
+    else:
+        # The application is not frozen
+        application_path = os.path.dirname(os.path.abspath(__file__))
+    
+    return os.path.join(application_path, filename)
 
-
-
-ICON_PATH = os.path.join(os.path.dirname(__file__), "..","app/price_icon.png")
+# --- File Paths ---
+ICON_PATH = get_file_path("price_icon.png")
+MODEL_PATH = get_file_path("dynamic_price_model.pkl")
+COLUMNS_PATH = get_file_path("model_column.pkl")
+DATA_PATH = get_file_path("sales_project_training_data_remove_columns.csv")
 
 st.set_page_config(
     page_title="AI Pricing Assistant",
-    page_icon=ICON_PATH, 
+    page_icon=ICON_PATH if os.path.exists(ICON_PATH) else "💰", 
     layout="wide"
 )
-
-# --- File Paths ---
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "dynamic_price_model.pkl")
-COLUMNS_PATH = os.path.join(os.path.dirname(__file__), "..", "model_column.pkl")
-DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "sales_project_training_data_remove_columns.csv")
 
 # --- Cached Data Loading ---
 @st.cache_data
 def load_data():
     try:
+        if not os.path.exists(DATA_PATH):
+            st.error(f"Data file not found at: {DATA_PATH}")
+            return pd.DataFrame()  # Return empty DataFrame to allow app to continue
+        
         data = pd.read_csv(DATA_PATH)
         # Data quality checks
         required_columns = ["quote_number", "selling", "costing", "project_status"]
         missing_cols = [col for col in required_columns if col not in data.columns]
         if missing_cols:
             st.error(f"Critical columns missing: {', '.join(missing_cols)}")
-            st.stop()
+            return pd.DataFrame()  # Return empty DataFrame to allow app to continue
         return data
     except Exception as e:
         st.error(f"Error loading data: {str(e)}")
-        st.stop()
+        return pd.DataFrame()  # Return empty DataFrame to allow app to continue
 
 @st.cache_resource
 def load_model():
     try:
+        if not os.path.exists(MODEL_PATH) or not os.path.exists(COLUMNS_PATH):
+            st.error("Model files not found! Please ensure dynamic_price_model.pkl and model_column.pkl are in the correct directory.")
+            return None, None
+            
         model = joblib.load(MODEL_PATH)
         feature_columns = joblib.load(COLUMNS_PATH)
         return model, feature_columns
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
-        st.stop()
+        return None, None
 
 # Initialize components
 data = load_data()
 model, feature_columns = load_model()
+
+# Rest of your existing code remains the same...
+# [Keep all your existing show_pricing_tool(), show_data_insights(), show_about(), and main() functions]
 
 def show_pricing_tool():
     """Main pricing tool interface"""

@@ -6,8 +6,7 @@ import joblib
 import plotly.express as px
 from streamlit_chat import message  # For better chat UI
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from llm_advisor.advisor import BusinessAdvisor
+
 
 
 ICON_PATH = os.path.join(os.path.dirname(__file__), "..","app/price_icon.png")
@@ -52,7 +51,6 @@ def load_model():
 # Initialize components
 data = load_data()
 model, feature_columns = load_model()
-advisor = BusinessAdvisor()
 
 def show_pricing_tool():
     """Main pricing tool interface"""
@@ -187,7 +185,6 @@ def show_pricing_tool():
                 Our cost: ${costing:,.2f}
                 Profit margin: {competitive_margin:.1f}%
                 """
-                st.write(advisor.get_advice(context_str))
 
                 # Download button
                 csv = pd.DataFrame({
@@ -529,9 +526,6 @@ def main():
                     Our cost: ${st.session_state.context_data['costing']:,.2f}
                     Profit margin: {st.session_state.context_data['competitive_margin']:.1f}%
                     """
-                    answer = advisor.chat(user_question, context_str)
-                    st.session_state.chat_history.append(("You", user_question))
-                    st.session_state.chat_history.append(("Advisor", answer))
                 st.rerun()
                 
     elif page == "Data Insights":

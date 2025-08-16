@@ -5,4 +5,5 @@ plotly
 streamlit-chat
 scikit-learn
 uvicorn
+fastapi
 

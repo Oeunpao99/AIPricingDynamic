@@ -4,7 +4,10 @@ import streamlit as st
 import pandas as pd
 import joblib
 import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from streamlit_chat import message
+from datetime import datetime
 
 # --- Path Handling ---
 def get_file_path(filename):
@@ -27,10 +30,80 @@ MODEL_PATH = get_file_path("dynamic_price_model.pkl")
 COLUMNS_PATH = get_file_path("model_column.pkl")
 DATA_PATH = get_file_path("sales_project_training_data_remove_columns.csv")
 
+# Custom CSS for styling
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 3rem;
+        color: #1f77b4;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    .sub-header {
+        font-size: 1.5rem;
+        color: #166312;
+        border-bottom: 2px solid #ff7f0e;
+        padding-bottom: 0.3rem;
+        margin-top: 1.5rem;
+    }
+    .highlight {
+        background-color: #f0f2f6;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 5px solid #1f77b4;
+        margin-bottom: 15px;
+    }
+    .metric-card {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 15px;
+    }
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #1f77b4;
+    }
+    .metric-label {
+        font-size: 1rem;
+        color: #6c757d;
+    }
+    .stButton>button {
+        width: 100%;
+        border-radius: 15px;
+        background-color: #166312;
+        color: white;
+        font-weight: bold;
+        border: none;
+        padding: 10px 24px;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        background-color:#166316;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .category-button {
+        width: 100%;
+        margin-bottom: 10px;
+        border-radius: 8px;
+    }
+    .chat-container {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 20px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 st.set_page_config(
     page_title="AI Pricing Assistant",
     page_icon=ICON_PATH if os.path.exists(ICON_PATH) else "💰", 
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # --- Cached Data Loading ---
@@ -71,47 +144,52 @@ def load_model():
 data = load_data()
 model, feature_columns = load_model()
 
-# Rest of your existing code remains the same...
-# [Keep all your existing show_pricing_tool(), show_data_insights(), show_about(), and main() functions]
-
 def show_pricing_tool():
     """Main pricing tool interface"""
-    st.title("📊 AI Pricing & Business Strategy Assistant")
+    st.markdown('<h1 class="main-header">📊 AI Pricing & Business Strategy Assistant</h1>', unsafe_allow_html=True)
     
-    with st.expander("ℹ️ How to use this tool"):
+    with st.expander("ℹ️ How to use this tool", expanded=True):
         st.markdown("""
-        1. Enter a quote number to load existing data
-        2. Adjust the parameters as needed
-        3. Click 'Generate Pricing & Advice'
-        4. Review the recommendations
+        <div class="highlight">
+        1. Enter a quote number to load existing data<br>
+        2. Adjust the parameters as needed<br>
+        3. Click 'Generate Pricing & Advice'<br>
+        4. Review the recommendations<br>
         5. Ask the advisor any follow-up questions
-        """)
+        </div>
+        """, unsafe_allow_html=True)
 
-    quote_number = st.text_input("🔍 Enter Quote Number (e.g., QT-4351)")
+    quote_number = st.text_input("🔍 Enter Quote Number (e.g., QT-4351)", key="quote_input")
     selected_row = data[data["quote_number"] == quote_number].iloc[0] if quote_number in data["quote_number"].values else None
 
     if selected_row is not None:
-        st.success(f"Quote found: {quote_number}")
+        st.success(f" Quote found: {quote_number}")
         
         col1, col2 = st.columns(2)
         with col1:
-            costing = st.number_input("Our Product Cost ($)", value=float(selected_row["costing"]))
+            st.markdown('<div class="sub-header">Cost & Demand Factors</div>', unsafe_allow_html=True)
+            costing = st.number_input("Our Product Cost ($)", value=float(selected_row["costing"]), key="cost_input")
             demand_level = st.selectbox("Demand Level", ["Low", "Medium", "High"], 
-                                      index=["Low", "Medium", "High"].index(selected_row["Demand_Level"]))
+                                      index=["Low", "Medium", "High"].index(selected_row["Demand_Level"]), key="demand_input")
             stock_availability = st.selectbox("Stock Availability", ["In Stock", "Low Stock", "Out of Stock"], 
-                                            index=["In Stock", "Low Stock", "Out of Stock"].index(selected_row["Stock_Availability"]))
+                                            index=["In Stock", "Low Stock", "Out of Stock"].index(selected_row["Stock_Availability"]), key="stock_input")
         
         with col2:
-            installation_cost = st.number_input("Installation Cost ($)", value=float(selected_row["Installation_Cost"]))
+            st.markdown('<div class="sub-header">Pricing & Customer Factors</div>', unsafe_allow_html=True)
+            installation_cost = st.number_input("Installation Cost ($)", value=float(selected_row["Installation_Cost"]), key="install_input")
             customer_type = st.selectbox("Customer Type", ["Corporate", "Enterprise", "Government", "SME"], 
-                                        index=["Corporate", "Enterprise", "Government", "SME"].index(selected_row["Customer_Type"]))
-            est_competitor_cost = st.number_input("Competitor's Cost ($)", value=float(selected_row["est_competitor_cost"]))
+                                        index=["Corporate", "Enterprise", "Government", "SME"].index(selected_row["Customer_Type"]), key="customer_input")
+            est_competitor_cost = st.number_input("Competitor's Cost ($)", value=float(selected_row["est_competitor_cost"]), key="competitor_input")
         
-        comp_markup = st.slider("Competitor's Typical Markup (%)", 10, 50, 25)
-        our_min_margin = st.slider("Our Minimum Acceptable Margin (%)", 5, 30, 15)
+        st.markdown('<div class="sub-header">Pricing Strategy</div>', unsafe_allow_html=True)
+        col3, col4 = st.columns(2)
+        with col3:
+            comp_markup = st.slider("Competitor's Typical Markup (%)", 10, 50, 25, key="comp_markup_slider")
+        with col4:
+            our_min_margin = st.slider("Our Minimum Acceptable Margin (%)", 5, 30, 15, key="min_margin_slider")
 
-        if st.button("💡 Generate Pricing & Advice"):
-            with st.spinner("Generating recommendations..."):
+        if st.button("💡 Generate Pricing & Advice", key="generate_button"):
+            with st.spinner("Analyzing market conditions and generating recommendations..."):
                 # Prepare input
                 new_row = pd.DataFrame([{
                     "costing": costing,
@@ -142,64 +220,145 @@ def show_pricing_tool():
                     "competitive_margin": competitive_margin
                 }
 
-                # Display results
-                st.success(f"💰 Model Suggested Price: **${base_price:,.2f}**")
-                st.success(f"🚀 Recommended Competitive Price: **${competitive_price:,.2f}**")
-                st.success(f"📊 Projected Margin: **{competitive_margin:.1f}%**")
-
-
-                # Price comparison chart
-                chart_df = pd.DataFrame({
-                    "Category": ["Costing", "Estimated Competitor Price", "Our Price"],
-                    "Value": [costing, competitor_price, competitive_price]
-                })
+                # Display results in metric cards
+                st.markdown('<div class="sub-header">Pricing Recommendations</div>', unsafe_allow_html=True)
                 
-                fig = px.bar(chart_df, x="Category", y="Value", text="Value",
-                            title="Price Comparison",
-                            color="Category",
-                            color_discrete_map={
-                                "Costing": "#ed0a0a",
-                                "Estimated Competitor Price": "#ff7700",
-                                "Our Price": "#0ab30a"
-                            })
-                fig.update_traces(texttemplate='$%{text:,.2f}', textposition='outside')
-                fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
-                st.plotly_chart(fig, use_container_width=True)
-                # Pie chart version
-                fig_pie = px.pie(
-                    chart_df,
-                    names="Category",
-                    values="Value",
-                    title="Price Distribution",
-                    color="Category",
-                    color_discrete_map={
-                        "Costing": "#ed0a0a",
-                        "Estimated Competitor Price": "#ff7700",
-                        "Our Price": "#0ab30a"
-                    },
-                    hole=0.4  # donut style
-                )
-                fig_pie.update_traces(textinfo="label+percent", pull=[0, 0.05, 0])  # slight separation for competitor
-                st.plotly_chart(fig_pie, use_container_width=True)
-    #linechart
-                fig_line = px.line(
-                    chart_df,
-                    x="Category",
-                    y="Value",
-                    markers=True,
-                    title="Price Comparison Trend",
-                    color="Category",
-                    color_discrete_map={
-                        "Costing": "#ed0a0a",
-                        "Estimated Competitor Price": "#ff7700",
-                        "Our Price": "#0ab30a"
-                    }
-                )
-                fig_line.update_traces(text=chart_df["Value"], textposition="top center")
-                st.plotly_chart(fig_line, use_container_width=True)
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-label">Model Suggested Price</div>
+                        <div class="metric-value">${base_price:,.2f}</div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-label">Recommended Competitive Price</div>
+                        <div class="metric-value">${competitive_price:,.2f}</div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-label">Projected Margin</div>
+                        <div class="metric-value">{competitive_margin:.1f}%</div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+                # Create tabs for different visualizations
+                tab1, tab2, tab3 = st.tabs(["Price Comparison Bar Chart", "Pie Chart", "Line Chart"])
+                
+                with tab1:
+                    # Price comparison chart
+                    chart_df = pd.DataFrame({
+                        "Category": ["Our Cost", "Competitor Price", "Our Suggested Price"],
+                        "Value": [costing, competitor_price, competitive_price]
+                    })
+                    
+                    fig = px.bar(chart_df, x="Category", y="Value", text="Value",
+                                title="Price Comparison Analysis",
+                                color="Category",
+                                color_discrete_map={
+                                    "Our Cost": "#ed0a0a",
+                                    "Competitor Price": "#ff7700",
+                                    "Our Suggested Price": "#166312"
+                                })
+                    fig.update_traces(texttemplate='$%{text:,.2f}', textposition='outside')
+                    fig.update_layout(
+                        uniformtext_minsize=8, 
+                        uniformtext_mode='hide',
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        font=dict(size=14)
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                with tab2:
+                    # Pie chart version
+                    fig_pie = px.pie(
+                        chart_df,
+                        names="Category",
+                        values="Value",
+                        title="Price Distribution",
+                        color="Category",
+                        color_discrete_map={
+                            "Our Cost": "#ed0a0a",
+                            "Competitor Price": "#ff7700",
+                            "Our Suggested Price": "#166312"
+                        },
+                        hole=0.4  # donut style
+                    )
+                    fig_pie.update_traces(
+                        textinfo="label+percent", 
+                        pull=[0, 0.05, 0],  # slight separation for competitor
+                        textfont_size=14
+                    )
+                    fig_pie.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        font=dict(size=14)
+                    )
+                    st.plotly_chart(fig_pie, use_container_width=True)
+                
+                with tab3:
+                    # Line chart
+                    fig_line = px.line(
+                        chart_df,
+                        x="Category",
+                        y="Value",
+                        markers=True,
+                        title="Price Comparison Trend",
+                        color="Category",
+                        color_discrete_map={
+                            "Our Cost": "#ed0a0a",
+                            "Competitor Price": "#ff7700",
+                            "Our Suggested Price": "#0ab30a"
+                        }
+                    )
+                    fig_line.update_traces(
+                        text=chart_df["Value"], 
+                        textposition="top center",
+                        line=dict(width=4)
+                    )
+                    fig_line.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        font=dict(size=14),
+                        yaxis_title="Price ($)",
+                        xaxis_title=""
+                    )
+                    st.plotly_chart(fig_line, use_container_width=True)
 
                 # Advisor insights
-                st.subheader("📋 Business Advisor Insights")
+                st.markdown('<div class="sub-header">📋 Business Advisor Insights</div>', unsafe_allow_html=True)
+                
+                # Create expandable sections for different insights
+                with st.expander("💰 Pricing Strategy", expanded=True):
+                    st.info(f"""
+                    - Our AI model suggests a base price of **${base_price:,.2f}**
+                    - After considering competitor pricing and your minimum margin, we recommend **${competitive_price:,.2f}**
+                    - This gives you a healthy profit margin of **{competitive_margin:.1f}%**
+                    """)
+                
+                with st.expander("📈 Market Position"):
+                    price_difference = competitive_price - competitor_price
+                    if price_difference < 0:
+                        st.success(f"**Competitive Advantage:** You're priced ${abs(price_difference):.2f} below your competitor")
+                    else:
+                        st.warning(f"**Price Premium:** You're priced ${price_difference:.2f} above your competitor")
+                
+                with st.expander("🎯 Actionable Recommendations"):
+                    if competitive_margin < our_min_margin:
+                        st.error("**Warning:** Your projected margin is below your minimum acceptable margin. Consider:")
+                        st.write("- Negotiating better supplier prices")
+                        st.write("- Reducing installation costs")
+                        st.write("- Adding value to justify a higher price")
+                    else:
+                        st.success("**Good News:** Your pricing strategy meets your margin requirements!")
+                
                 context_str = f"""
                 Base model price: ${base_price:,.2f}
                 Competitor price: ${competitor_price:,.2f}
@@ -217,8 +376,9 @@ def show_pricing_tool():
                 st.download_button(
                     label="📥 Download Pricing Analysis",
                     data=csv,
-                    file_name="pricing_analysis.csv",
-                    mime="text/csv"
+                    file_name=f"pricing_analysis_{quote_number}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    key="download_button"
                 )
 
                 # Initialize chat history if not exists
@@ -226,10 +386,10 @@ def show_pricing_tool():
                     st.session_state.chat_history = []
 
     elif quote_number:
-        st.error("Quote number not found in data.")
+        st.error("Quote number not found in data. Please check the number and try again.")
 
 def show_data_insights():
-    st.header("📊 Your Business Insights")
+    st.markdown('<h1 class="main-header">📊 Your Business Insights</h1>', unsafe_allow_html=True)
 
     data = load_data()
     if data.empty:
@@ -280,21 +440,21 @@ def show_data_insights():
     # Initialize session state for selected category if not present
     if "selected_category" not in st.session_state:
         st.session_state.selected_category = None
- # Display categories as clickable cards (buttons)
-
-    st.write("### Select a Category")
-    cols = st.columns(3)
+        
+    # Display categories as clickable cards (buttons)
+    st.markdown('<div class="sub-header">Select an Analysis Category</div>', unsafe_allow_html=True)
+    
+    cols = st.columns(4)
     cat_list = list(question_categories.keys())
     for i, cat in enumerate(cat_list):
-        col = cols[i % 3]
-        if col.button(cat):
+        col = cols[i % 4]
+        if col.button(cat, key=f"cat_{i}", use_container_width=True):
             st.session_state.selected_category = cat
 
-
     if st.session_state.selected_category:
-        st.write(f"### Questions for **{st.session_state.selected_category}**")
+        st.markdown(f'<div class="sub-header">{st.session_state.selected_category}</div>', unsafe_allow_html=True)
         questions = question_categories[st.session_state.selected_category]
-        question_choice = st.selectbox("Choose a question:", ["Select a question"] + questions)
+        question_choice = st.selectbox("Choose a question:", ["Select a question"] + questions, key="question_select")
 
         if question_choice != "Select a question":
             # -------------------------
@@ -493,37 +653,63 @@ def show_data_insights():
                 st.write("**Average Quantity Sold by Customer Type:**")
                 st.dataframe(qty_by_customer)
 
-
 def show_about():
     """About page"""
-    st.title("About This Tool")
+    st.markdown('<h1 class="main-header">About This Tool</h1>', unsafe_allow_html=True)
     st.markdown("""
-    ## AI-Powered Pricing Assistant
-    
-    This tool helps sales teams:
-    - Generate optimal prices using machine learning
-    - Analyze historical data for insights
-    - Get AI recommendations for pricing strategy
-    
-    **Key Features:**
-    - Dynamic price prediction based on market conditions
-    - Competitive pricing analysis
-    - Business advisor with natural language interface
-    - Comprehensive data visualization
-    
-  "***Developed by Proseth Developer Team***"
-    """)
+        <div class="highlight">
+        - Generate optimal prices using machine learning
+        - Analyze historical data for insights
+        - Get AI recommendations for pricing strategy
+
+        **Key Features:**
+        - Dynamic price prediction based on market conditions
+        - Competitive pricing analysis
+        - Business advisor with natural language interface
+        - Comprehensive data visualization
+        </div>
+        """, unsafe_allow_html=True)
+    st.markdown("""
+            ***
+            <div style="text-align: center; padding: 20px; background-color: #f0f2f6; border-radius: 10px;">
+                <h3 style="color: #1f77b4;">Developed by Proseth Developer Team</h3>
+                <p>
+                    Visit our website: <a href="https://prosethsolutions.com/" target="_blank">https://prosethsolutions.com/</a>
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
 
 # --- Main App Structure ---
 def main():
-    # Initialize session state for chat if not exists
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
     
-    # Sidebar navigation
+ 
     with st.sidebar:
-        st.header("Navigation")
-        page = st.radio("Go to", ["Pricing Tool", "Data Insights", "About"])
+        page_options = {
+            "Pricing Tool": "💰",
+            "Data Insights": "📊", 
+            "About": "ℹ️"
+        }
+        
+        page = st.radio("Go to", list(page_options.keys()), 
+                        format_func=lambda x: f"{page_options[x]} {x}")
+        
+        st.markdown("***")
+        st.markdown("### Quick Stats")
+        if not data.empty:
+            total_revenue = data["selling"].sum()
+            win_rate = (data["project_status"] == "Won").mean() * 100
+            avg_deal_size = data["selling"].mean()
+            
+            st.markdown(f"""
+            - Total Revenue: **${total_revenue:,.2f}**
+            - Win Rate: **{win_rate:.1f}%**
+            - Avg Deal Size: **${avg_deal_size:,.2f}**
+            """)
+        else:
+            st.info("Upload data to see statistics")
+    
     # Main content area
     if page == "Pricing Tool":
         show_pricing_tool()
@@ -531,7 +717,7 @@ def main():
         # Chat interface (only show if we have context)
         if "context_data" in st.session_state:
             st.markdown("---")
-            st.subheader("💬 Pricing Advisor Chat")
+            st.markdown('<div class="sub-header">💬 Pricing Advisor Chat</div>', unsafe_allow_html=True)
             
             # Display chat history
             for i, (speaker, msg) in enumerate(st.session_state.chat_history):
@@ -541,6 +727,7 @@ def main():
             user_question = st.chat_input("Ask the advisor about this pricing...")
             if user_question:
                 with st.spinner("Thinking..."):
+                    # Add your chat logic here
                     context_str = f"""
                     Base model price: ${st.session_state.context_data['base_price']:,.2f}
                     Competitor price: ${st.session_state.context_data['competitor_price']:,.2f}
@@ -548,6 +735,9 @@ def main():
                     Our cost: ${st.session_state.context_data['costing']:,.2f}
                     Profit margin: {st.session_state.context_data['competitive_margin']:.1f}%
                     """
+                    # For now, just echo the question
+                    st.session_state.chat_history.append(("You", user_question))
+                    st.session_state.chat_history.append(("Advisor", f"I received your question: '{user_question}'. I would analyze this based on the pricing context."))
                 st.rerun()
                 
     elif page == "Data Insights":
